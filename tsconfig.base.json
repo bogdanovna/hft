@@ -17,6 +17,7 @@
     "paths": {
       "@hft/ku/http": ["libs/ku/http/src/index.ts"],
       "@hft/ku/ws": ["libs/ku/ws/src/index.ts"],
+      "@hft/order-book/ku": ["libs/order-book/ku/src/index.ts"],
       "@hft/types/ku": ["libs/types/ku/src/index.ts"],
       "@hft/utils": ["libs/utils/src/index.ts"]
     }
