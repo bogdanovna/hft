@@ -1,12 +1,22 @@
+import { CurrencyPair, KuEnvKeys, KuHttp, KuReq, KuRes } from "@hft/types/ku";
+import { OmitReplace } from '@hft/utils';
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { CurrencyPair, KuEnvKeys, KuHttp, KuReq } from "@hft/types/ku";
 import { request } from 'undici';
 import { SignGenerator } from "./sign-generator";
-import { join } from "path";
 
 type _Keys = Record<KuEnvKeys, string>;
-
+type Level2ResData = KuRes<'/api/v3/market/orderbook/level2'>;
+type T_data = Level2ResData['data'];
+type NumeratedLevel2Res = OmitReplace<
+  Level2ResData, {
+    data: OmitReplace<T_data,
+      {
+        sequence: number,
+        bids: [number, number][],
+        asks: [number, number][],
+      }>
+  }>;
 @Injectable()
 export class KuHttpService {
   private signGenerator = new SignGenerator();
@@ -32,12 +42,12 @@ export class KuHttpService {
     return this
       .http(url, payload)
       .then(({ body }) => body.json() as Promise<KuHttp['/api/v1/bullet-public']['res']>)
-      .then(({ data: { instanceServers: [{endpoint, pingInterval, pingTimeout }], token } }) => ({
+      .then(({ data: { instanceServers: [{ endpoint, pingInterval, pingTimeout }], token } }) => ({
         endpoint,
         token,
         pingInterval,
         pingTimeout,
-      })) ;
+      }));
   }
 
   public async POST_apply_private_connect_token() {
@@ -55,15 +65,18 @@ export class KuHttpService {
     return this
       .http(url, payload)
       .then(({ body }) => body.json() as Promise<KuHttp['/api/v1/bullet-private']['res']>)
-      .then(({ data: { instanceServers: [{endpoint, pingInterval, pingTimeout  }], token } }) => ({
+      .then(({ data: { instanceServers: [{ endpoint, pingInterval, pingTimeout }], token } }) => ({
         endpoint,
         token,
         pingInterval,
         pingTimeout,
-      })) ;
+      }));
   }
 
-  public async GET_full_order_book(symbol: CurrencyPair) {
+  public async GET_full_order_book(symbol: CurrencyPair, floatStringsToNumber: false): Promise<Level2ResData>;
+  public async GET_full_order_book(symbol: CurrencyPair, floatStringsToNumber: true): Promise<NumeratedLevel2Res>;
+  public async GET_full_order_book(symbol: CurrencyPair): Promise<NumeratedLevel2Res>;
+  public async GET_full_order_book(symbol: CurrencyPair, floatStringsToNumber = true) {
     const url: KuReq<'/api/v3/market/orderbook/level2'>[0]['url'] = 'https://api.kucoin.com/api/v3/market/orderbook/level2';
     const forSignature: KuReq<'/api/v3/market/orderbook/level2'>[0]['forSignature'] = {
       endpoint: '/api/v3/market/orderbook/level2',
@@ -77,6 +90,23 @@ export class KuHttpService {
       query: { symbol },
     };
 
-    return this.http(url, payload);
+    type T_body = Level2ResData;
+
+    return this.http(url, payload)
+      .then(({ body }) => body.json() as Promise<T_body>)
+      .then((res) => {
+
+        if (!floatStringsToNumber) return res;
+
+        return {
+          ...res,
+          data: {
+            ...res.data,
+            sequence: parseFloat(res.data.sequence),
+            bids: res.data.bids.map((arr) => arr.map((a) => parseFloat(a)) as [number, number]),
+            asks: res.data.bids.map((arr) => arr.map((a) => parseFloat(a)) as [number, number]),
+          },
+        };
+      });
   }
 }

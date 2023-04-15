@@ -62,12 +62,9 @@ export type KuHttp = {
             topic: string,
             subject: 'trade.l2update',
             data: {
-                changes: {
-                    asks: [string, string, string],
-                    bids: [string, string, string],
-                },
-                sequenceEnd: number,
-                sequenceStart: number,
+                asks: [string, string][],
+                bids: [string, string][],
+                sequence: string,
                 symbol: CurrencyPair,
                 time: number,
             },
